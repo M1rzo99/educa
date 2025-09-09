@@ -174,46 +174,75 @@ export const getNextLesson = async (lessonId: string, courseId: string) => {
 }
 
 export const getLastLesson = async (clerkId: string, courseId: string) => {
-	try {
-		await connectToDatabase()
+  try {
+    await connectToDatabase()
 
-		const sections = await Section.find({ course: courseId })
-			.select('lessons')
-			.sort({ position: 1 })
-			.populate({
-				path: 'lessons',
-				model: Lesson,
-				select: 'userProgress',
-				options: { sort: { position: 1 } },
-			})
+    // Sektsiyalarni tartib bilan va darslarni tartib bilan olib kelamiz
+    const sections = await Section.find({ course: courseId })
+      .sort({ position: 1 })
+      .populate({
+        path: 'lessons',
+        model: Lesson,
+        select: 'position userProgress', // _id default bo'ladi
+        options: { sort: { position: 1 } },
+      })
 
-		const lessons: ILesson[] = sections.map(section => section.lessons).flat()
+    if (!sections || sections.length === 0) {
+      // Kursda section yo'q
+      return null
+    }
 
-		const userProgress = await UserProgress.find({
-			userId: clerkId,
-			lessonId: { $in: lessons.map(lesson => lesson._id) },
-			isCompleted: true,
-		}).sort({ createdAt: -1 })
+    // Ichidan birinchi dars bor sectionni topamiz (fallback uchun)
+    const firstWithLesson = sections.find(s => Array.isArray(s.lessons) && s.lessons.length > 0)
+    if (!firstWithLesson) {
+      // Hech qaysi sectionda dars yo'q
+      return null
+    }
 
-		const lastLesson = userProgress[userProgress.length - 1]
+    // Barcha darslarni tekislaymiz
+    const lessons: ILesson[] = sections.flatMap(s => (s.lessons as ILesson[]))
 
-		if (!lastLesson) {
-			return {
-				sectionId: sections[0]._id.toString(),
-				lessonId: sections[0].lessons[0]._id.toString(),
-			}
-		}
+    // Foydalanuvchining eng so'nggi tugallagan darsini topamiz
+    const last = await UserProgress.find({
+      userId: clerkId,
+      lessonId: { $in: lessons.map(l => l._id) },
+      isCompleted: true,
+    })
+      .sort({ createdAt: -1, _id: -1 }) // eng YANGISI birinchi bo'ladi
+      .limit(1)
 
-		const section = await Section.findOne({ lessons: lastLesson.lessonId })
+    // Agar hali tugallangan dars bo'lmasa → birinchi mavjud darsga yo'naltiramiz
+    if (!last.length) {
+      const firstLesson = firstWithLesson.lessons[0] as any
+      return {
+        sectionId: firstWithLesson._id.toString(),
+        lessonId: firstLesson._id.toString(),
+      }
+    }
 
-		return {
-			lessonId: lastLesson.lessonId.toString(),
-			sectionId: section._id.toString(),
-		}
-	} catch (error) {
-		throw new Error('Something went wrong!')
-	}
+    const chosenLessonId = last[0].lessonId.toString()
+
+    // sectionId’ni qo‘shimcha querysiz, mavjud sections ichidan topamiz
+    const containingSection = sections.find(s =>
+      (s.lessons as ILesson[]).some(l => l._id.toString() === chosenLessonId)
+    )
+
+    if (!containingSection) {
+      // Juda kam uchraydi, lekin himoya
+      return null
+    }
+
+    return {
+      lessonId: chosenLessonId,
+      sectionId: containingSection._id.toString(),
+    }
+  } catch (err) {
+    console.error('[getLastLesson] error:', err)
+    const msg = err instanceof Error ? err.message : String(err)
+    throw new Error(`[getLastLesson] ${msg}`)
+  }
 }
+
 
 export const getFreeLessons = async (courseId: string) => {
 	try {
