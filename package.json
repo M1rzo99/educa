@@ -7,7 +7,6 @@
         "build": "next build",
         "start": "next start",
         "lint": "next lint"
-
     },
     "dependencies": {
         "@clerk/localizations": "^1.26.15",
@@ -39,7 +38,7 @@
         "date-fns": "^3.3.1",
         "embla-carousel-autoplay": "^8.0.0-rc23",
         "embla-carousel-react": "^8.0.0-rc23",
-        "firebase": "^10.8.0",
+        "firebase": "^10.14.1",
         "graphql": "^16.8.1",
         "graphql-request": "^6.1.0",
         "html-react-parser": "^5.1.7",

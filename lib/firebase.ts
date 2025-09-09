@@ -14,6 +14,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 const storage = getStorage(app)
 
-const courseStringRefs = ref(storage, `/educa/course/${new Date().getTime()}`)
+const courseStringRefs = ref(storage, `educa/course/${new Date().getTime()}`)
 
 export { storage, courseStringRefs }

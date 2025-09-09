@@ -17,6 +17,7 @@ export default authMiddleware({
 		'/:lng/contacts',
 		'/:lng/instructors',
 		'/:lng/instructors/:instructorId',
+		'/:lng/instructor',
 		'/:lng/shopping/cart',
 		'/:lng/sign-in',
 		'/:lng/sign-up',
